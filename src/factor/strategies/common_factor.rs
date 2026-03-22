@@ -32,11 +32,11 @@ impl FactorizationStrategy for CommonFactorStrategy {
             return None;
         }
 
-        let residual = Expr::sum(decomposed_terms.iter().map(|term| {
-            term.divide_by(&common_factor)
-                .expect("common factor must divide every decomposed term")
-                .to_expr()
-        }));
+        let residual_terms = decomposed_terms
+            .iter()
+            .map(|term| term.divide_by(&common_factor))
+            .collect::<Option<Vec<_>>>()?;
+        let residual = Expr::sum(residual_terms.into_iter().map(|term| term.to_expr()));
         let factored = Expr::product([common_factor.to_expr(), residual]);
 
         (factored != *expr).then(|| FactorizationResult {

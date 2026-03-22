@@ -202,7 +202,7 @@ fn substitution_powers(exponent_gcd: usize) -> Vec<usize> {
     let mut candidate = 2usize;
 
     while candidate <= exponent_gcd / candidate {
-        if exponent_gcd % candidate == 0 {
+        if exponent_gcd.is_multiple_of(candidate) {
             divisors.insert(candidate);
             divisors.insert(exponent_gcd / candidate);
         }
@@ -223,9 +223,11 @@ fn lift_factored_expr(expr: &Expr, variable: &Symbol, power: usize) -> Expr {
 
 fn refine_factored_expr(expr: &Expr, variable: &Symbol) -> Expr {
     match expr.kind() {
-        ExprKind::Mul(factors) => {
-            Expr::product(factors.iter().map(|factor| refine_factored_expr(factor, variable)))
-        }
+        ExprKind::Mul(factors) => Expr::product(
+            factors
+                .iter()
+                .map(|factor| refine_factored_expr(factor, variable)),
+        ),
         ExprKind::Pow { base, exp } => {
             let refined_base = factor_atomic_polynomial_expr(base, variable);
             let exponent = exp

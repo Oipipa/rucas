@@ -18,7 +18,7 @@ pub(crate) fn expression_score(expr: &Expr) -> ExpressionScore {
 }
 
 fn explicit_denominator_count(expr: &Expr) -> usize {
-    let child_count = match expr.kind() {
+    match expr.kind() {
         ExprKind::Number(_) | ExprKind::Symbol(_) => 0,
         ExprKind::Add(terms) | ExprKind::Mul(terms) => {
             terms.iter().map(explicit_denominator_count).sum()
@@ -31,9 +31,7 @@ fn explicit_denominator_count(expr: &Expr) -> usize {
         ExprKind::Call { args, .. } => args.iter().map(explicit_denominator_count).sum(),
         ExprKind::Derivative(derivative) => explicit_denominator_count(&derivative.expr),
         ExprKind::Integral(integral) => explicit_denominator_count(&integral.expr),
-    };
-
-    child_count
+    }
 }
 
 fn explicit_denominator_here(exp: &Expr) -> usize {

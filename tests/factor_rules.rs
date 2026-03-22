@@ -261,14 +261,20 @@ fn polynomial_factorizer_handles_power_substitution_for_even_powers() {
             ]),
         ])
     );
-    assert_eq!(result.steps, vec!["polynomial", "power substitution factorization"]);
+    assert_eq!(
+        result.steps,
+        vec!["polynomial", "power substitution factorization"]
+    );
 }
 
 #[test]
 fn polynomial_factorizer_handles_power_substitution_for_higher_powers() {
     let expr = Expr::sum([
         Expr::pow(Expr::symbol("x"), Expr::integer(6)),
-        Expr::product([Expr::integer(5), Expr::pow(Expr::symbol("x"), Expr::integer(3))]),
+        Expr::product([
+            Expr::integer(5),
+            Expr::pow(Expr::symbol("x"), Expr::integer(3)),
+        ]),
         Expr::integer(6),
     ]);
 
@@ -288,7 +294,10 @@ fn polynomial_factorizer_handles_power_substitution_for_higher_powers() {
             ]),
         ])
     );
-    assert_eq!(result.steps, vec!["polynomial", "power substitution factorization"]);
+    assert_eq!(
+        result.steps,
+        vec!["polynomial", "power substitution factorization"]
+    );
 }
 
 #[test]
@@ -318,6 +327,68 @@ fn polynomial_factorizer_recovers_repeated_irreducible_factors() {
     assert_eq!(
         result.steps,
         vec!["polynomial", "square-free factorization"]
+    );
+}
+
+#[test]
+fn factorizer_composes_common_factor_and_polynomial_factorization() {
+    let expr = Expr::sum([
+        Expr::product([
+            Expr::symbol("a"),
+            Expr::pow(Expr::symbol("x"), Expr::integer(2)),
+        ]),
+        Expr::product([Expr::integer(2), Expr::symbol("a"), Expr::symbol("x")]),
+        Expr::symbol("a"),
+    ]);
+
+    let result = factor(&expr);
+
+    assert_eq!(result.status, FactorizationStatus::Factored);
+    assert_eq!(
+        result.expr,
+        Expr::product([
+            Expr::symbol("a"),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(2),
+            ),
+        ])
+    );
+    assert_eq!(
+        result.steps,
+        vec![
+            "common-factor",
+            "common factor extracted",
+            "polynomial",
+            "rational root factorization",
+        ]
+    );
+}
+
+#[test]
+fn factorizer_factors_nested_subexpressions() {
+    let expr = Expr::product([
+        Expr::symbol("y"),
+        Expr::sum([
+            Expr::pow(Expr::symbol("x"), Expr::integer(2)),
+            Expr::integer(-1),
+        ]),
+    ]);
+
+    let result = factor(&expr);
+
+    assert_eq!(result.status, FactorizationStatus::Factored);
+    assert_eq!(
+        result.expr,
+        Expr::product([
+            Expr::sum([Expr::integer(-1), Expr::symbol("x")]),
+            Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+            Expr::symbol("y"),
+        ])
+    );
+    assert_eq!(
+        result.steps,
+        vec!["polynomial", "rational root factorization"]
     );
 }
 

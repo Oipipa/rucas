@@ -75,7 +75,12 @@ impl<C: PolynomialCoefficient> SparseUnivariatePolynomial<C> {
     pub(crate) fn exponent_gcd(&self) -> Option<usize> {
         let mut gcd = Option::<usize>::None;
 
-        for degree in self.coefficients.keys().copied().filter(|degree| *degree > 0) {
+        for degree in self
+            .coefficients
+            .keys()
+            .copied()
+            .filter(|degree| *degree > 0)
+        {
             gcd = Some(match gcd {
                 Some(current) => current.gcd(&degree),
                 None => degree,
