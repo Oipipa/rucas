@@ -96,24 +96,21 @@ pub fn pow(base: Expr, exp: Expr) -> Expr {
 
     if let (Some(number), Some(exp_value)) =
         (base.as_number(), exp.as_number().and_then(Number::as_i64))
+        && let Some(powered) = number.powi(exp_value)
     {
-        if let Some(powered) = number.powi(exp_value) {
-            return Expr::number(powered);
-        }
+        return Expr::number(powered);
     }
 
     if let ExprKind::Pow {
         base: inner_base,
         exp: inner_exp,
     } = base.kind()
-    {
-        if exp
+        && exp
             .as_number()
             .and_then(Number::as_i64)
             .is_some_and(|value| value > 0)
-        {
-            return pow(inner_base.clone(), Expr::product([inner_exp.clone(), exp]));
-        }
+    {
+        return pow(inner_base.clone(), Expr::product([inner_exp.clone(), exp]));
     }
 
     Expr::raw(ExprKind::Pow { base, exp })

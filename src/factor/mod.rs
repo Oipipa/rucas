@@ -1,4 +1,8 @@
+mod strategies;
+
 use crate::{Expr, context::EngineContext};
+
+use self::strategies::install_default_strategies;
 
 pub trait FactorizationStrategy: Send + Sync {
     fn name(&self) -> &'static str;
@@ -36,14 +40,27 @@ impl FactorizationResult {
     }
 }
 
-#[derive(Default)]
 pub struct Factorizer {
     strategies: Vec<Box<dyn FactorizationStrategy>>,
+}
+
+impl Default for Factorizer {
+    fn default() -> Self {
+        let mut factorizer = Self::empty();
+        install_default_strategies(&mut factorizer);
+        factorizer
+    }
 }
 
 impl Factorizer {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub fn empty() -> Self {
+        Self {
+            strategies: Vec::new(),
+        }
     }
 
     pub fn with_strategy(mut self, strategy: impl FactorizationStrategy + 'static) -> Self {

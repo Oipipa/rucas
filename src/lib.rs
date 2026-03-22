@@ -3,6 +3,7 @@ pub mod core;
 pub mod diff;
 pub mod factor;
 pub mod integrate;
+mod polynomial;
 pub mod rewrite;
 pub mod simplify;
 

@@ -1,8 +1,19 @@
+mod rules;
+
 use crate::{Expr, context::EngineContext, rewrite::RewriteEngine};
 
-#[derive(Default)]
+use self::rules::install_default_rules;
+
 pub struct Simplifier {
     engine: RewriteEngine,
+}
+
+impl Default for Simplifier {
+    fn default() -> Self {
+        let mut engine = RewriteEngine::new();
+        install_default_rules(&mut engine);
+        Self { engine }
+    }
 }
 
 impl Simplifier {

@@ -83,6 +83,10 @@ impl Number {
         Self::from_big_rational(self.to_big_rational() / other.to_big_rational())
     }
 
+    pub fn neg(&self) -> Self {
+        Self::from_big_rational(-self.to_big_rational())
+    }
+
     pub fn powi(&self, exp: i64) -> Option<Self> {
         if exp == 0 {
             return Some(Self::one());
@@ -127,7 +131,36 @@ impl Number {
         }
     }
 
-    fn to_big_rational(&self) -> BigRational {
+    pub(crate) fn sqrt_exact(&self) -> Option<Self> {
+        match self {
+            Self::Integer(value) => {
+                if value.is_negative() {
+                    return None;
+                }
+
+                let sqrt = value.sqrt();
+                (&sqrt * &sqrt == *value).then_some(Self::Integer(sqrt))
+            }
+            Self::Rational(value) => {
+                if value.is_negative() {
+                    return None;
+                }
+
+                let numer_sqrt = value.numer().sqrt();
+                let denom_sqrt = value.denom().sqrt();
+
+                if &numer_sqrt * &numer_sqrt == *value.numer()
+                    && &denom_sqrt * &denom_sqrt == *value.denom()
+                {
+                    Some(Self::rational(numer_sqrt, denom_sqrt))
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub(crate) fn to_big_rational(&self) -> BigRational {
         match self {
             Self::Integer(value) => BigRational::from_integer(value.clone()),
             Self::Rational(value) => value.clone(),

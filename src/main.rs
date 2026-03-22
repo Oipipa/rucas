@@ -11,7 +11,7 @@ fn main() {
         Expr::integer(2),
     ]);
 
-    let derivative = Differentiator::default().differentiate(&expr, &x, &ctx);
+    let derivative = Differentiator::new().differentiate(&expr, &x, &ctx);
     let integral = Integrator::default().integrate(&expr, &x, &ctx);
 
     println!("expr         = {expr}");

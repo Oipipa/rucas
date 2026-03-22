@@ -50,7 +50,7 @@ fn factorizer_uses_first_matching_strategy_and_records_steps() {
         Expr::symbol("x"),
     ]);
 
-    let result = Factorizer::new()
+    let result = Factorizer::empty()
         .with_strategy(NeverApplies)
         .with_strategy(DemoFactor)
         .factor(&expr, &ctx);
@@ -71,7 +71,7 @@ fn factorizer_can_skip_step_recording() {
         Expr::symbol("x"),
     ]);
 
-    let result = Factorizer::new()
+    let result = Factorizer::empty()
         .with_strategy(DemoFactor)
         .factor(&expr, &ctx);
 

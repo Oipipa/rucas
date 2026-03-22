@@ -1,6 +1,6 @@
 use rucas::{
-    BuiltinFunction, Differentiator, EngineContext, Expr, FactorizationStatus, Factorizer,
-    Function, IntegrationStatus, Integrator, Symbol,
+    Differentiator, EngineContext, Expr, FactorizationStatus, Factorizer, Function,
+    IntegrationStatus, Integrator, Symbol,
 };
 
 #[test]
@@ -19,14 +19,11 @@ fn addition_is_canonicalized() {
 fn unsupported_derivatives_remain_explicit() {
     let ctx = EngineContext::default();
     let x = Symbol::new("x");
-    let expr = Expr::call(
-        Function::Builtin(BuiltinFunction::Sin),
-        [Expr::from_symbol(x.clone())],
-    );
+    let expr = Expr::call(Function::named("f"), [Expr::from_symbol(x.clone())]);
 
-    let derivative = Differentiator::default().differentiate(&expr, &x, &ctx);
+    let derivative = Differentiator::new().differentiate(&expr, &x, &ctx);
 
-    assert_eq!(derivative.to_string(), "d/dx(sin(x))");
+    assert_eq!(derivative.to_string(), "d/dx(f(x))");
 }
 
 #[test]
