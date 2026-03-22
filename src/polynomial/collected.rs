@@ -2,6 +2,7 @@ use crate::{Expr, ExprKind, Symbol, core::visit::any};
 
 use super::{
     CollectedPolynomial, PolynomialAnalysisLimits, SparseUnivariatePolynomial, analysis::symbols,
+    score::expression_score,
 };
 
 impl SparseUnivariatePolynomial<Expr> {
@@ -19,7 +20,7 @@ pub(crate) fn collect_polynomial_sum(expr: &Expr) -> Option<Expr> {
         return None;
     };
 
-    let mut best: Option<(CollectionScore, Expr)> = None;
+    let mut best: Option<_> = None;
 
     for variable in symbols(expr) {
         let Some(candidate) = CollectedPolynomial::from_expr_with_variable_and_limits(
@@ -31,7 +32,7 @@ pub(crate) fn collect_polynomial_sum(expr: &Expr) -> Option<Expr> {
             continue;
         };
 
-        let candidate_score = collection_score(&candidate);
+        let candidate_score = expression_score(&candidate);
         match &best {
             Some((current_score, _)) if candidate_score >= *current_score => {}
             _ => best = Some((candidate_score, candidate)),
@@ -94,39 +95,4 @@ fn depends_on_variable(expr: &Expr, variable: &Symbol) -> bool {
         ExprKind::Symbol(symbol) => symbol == variable,
         _ => false,
     })
-}
-
-#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-struct CollectionScore {
-    top_level_terms: usize,
-    node_count: usize,
-    expr: Expr,
-}
-
-fn collection_score(expr: &Expr) -> CollectionScore {
-    CollectionScore {
-        top_level_terms: top_level_terms(expr),
-        node_count: node_count(expr),
-        expr: expr.clone(),
-    }
-}
-
-fn top_level_terms(expr: &Expr) -> usize {
-    match expr.kind() {
-        ExprKind::Add(terms) => terms.len(),
-        _ => 1,
-    }
-}
-
-fn node_count(expr: &Expr) -> usize {
-    let child_count = match expr.kind() {
-        ExprKind::Number(_) | ExprKind::Symbol(_) => 0,
-        ExprKind::Add(terms) | ExprKind::Mul(terms) => terms.iter().map(node_count).sum(),
-        ExprKind::Pow { base, exp } => node_count(base) + node_count(exp),
-        ExprKind::Call { args, .. } => args.iter().map(node_count).sum(),
-        ExprKind::Derivative(derivative) => node_count(&derivative.expr),
-        ExprKind::Integral(integral) => node_count(&integral.expr),
-    };
-
-    1 + child_count
 }

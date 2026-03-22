@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 use num_bigint::BigInt;
 
+use super::rational::{CollectedRationalFunction, UnivariateRationalFunction};
 use super::{
-    CollectedPolynomial, PolynomialAnalysisLimits, UnivariatePolynomial, UnivariateRationalFunction,
+    CollectedPolynomial, PolynomialAnalysisLimits, UnivariatePolynomial,
+    collect_rational_expression,
 };
 use crate::{BuiltinFunction, Expr, Function, Number, Symbol};
 
@@ -101,6 +103,26 @@ fn collected_analysis_treats_variable_independent_calls_as_coefficients() {
                 Expr::call(Function::Builtin(BuiltinFunction::Sin), [Expr::symbol("y")],),
             ]),
         ])
+    );
+}
+
+#[test]
+fn collected_content_and_primitive_part_extract_symbolic_factors() {
+    let polynomial = CollectedPolynomial::from_coefficients(
+        Symbol::new("x"),
+        [
+            (0, Expr::symbol("a")),
+            (1, Expr::product([Expr::symbol("a"), Expr::integer(2)])),
+        ],
+    );
+
+    assert_eq!(polynomial.content(), Some(Expr::symbol("a")));
+    assert_eq!(
+        polynomial.primitive_part(),
+        Some(CollectedPolynomial::from_coefficients(
+            Symbol::new("x"),
+            [(0, Expr::one()), (1, Expr::integer(2))],
+        ))
     );
 }
 
@@ -360,4 +382,96 @@ fn rational_normalization_combines_distinct_denominators() {
             [(0, Number::integer(-1)), (2, Number::integer(1))],
         )
     );
+}
+
+#[test]
+fn collected_rational_normalization_cancels_symbolic_coefficient_content() {
+    let x = Symbol::new("x");
+    let expr = Expr::product([
+        Expr::sum([
+            Expr::symbol("a"),
+            Expr::product([Expr::symbol("a"), Expr::symbol("x")]),
+        ]),
+        Expr::pow(
+            Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+            Expr::integer(-1),
+        ),
+    ]);
+
+    let rational = CollectedRationalFunction::from_expr_with_variable_and_limits(
+        &expr,
+        &x,
+        PolynomialAnalysisLimits::default(),
+    )
+    .expect("symbolic-coefficient rational should analyze");
+
+    assert_eq!(rational.scale(), &Expr::symbol("a"));
+    assert_eq!(
+        rational.numerator(),
+        &CollectedPolynomial::from_coefficients(Symbol::new("x"), [(0, Expr::one())])
+    );
+    assert_eq!(
+        rational.denominator(),
+        &CollectedPolynomial::from_coefficients(Symbol::new("x"), [(0, Expr::one())])
+    );
+}
+
+#[test]
+fn collected_rational_normalization_combines_symbolic_coefficients_over_common_denominator() {
+    let x = Symbol::new("x");
+    let expr = Expr::sum([
+        Expr::product([
+            Expr::symbol("a"),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(-1),
+            ),
+        ]),
+        Expr::product([
+            Expr::symbol("x"),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(-1),
+            ),
+        ]),
+    ]);
+
+    let rational = CollectedRationalFunction::from_expr_with_variable_and_limits(
+        &expr,
+        &x,
+        PolynomialAnalysisLimits::default(),
+    )
+    .expect("symbolic-coefficient rational should analyze");
+
+    assert_eq!(rational.scale(), &Expr::one());
+    assert_eq!(
+        rational.numerator(),
+        &CollectedPolynomial::from_coefficients(
+            Symbol::new("x"),
+            [(0, Expr::symbol("a")), (1, Expr::one())],
+        )
+    );
+    assert_eq!(
+        rational.denominator(),
+        &CollectedPolynomial::from_coefficients(
+            Symbol::new("x"),
+            [(0, Expr::one()), (1, Expr::one())],
+        )
+    );
+}
+
+#[test]
+fn rational_collection_chooses_symbolic_coefficient_variable() {
+    let expr = Expr::product([
+        Expr::sum([
+            Expr::symbol("y"),
+            Expr::product([Expr::symbol("x"), Expr::symbol("y")]),
+        ]),
+        Expr::pow(
+            Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+            Expr::integer(-1),
+        ),
+    ]);
+
+    assert_eq!(collect_rational_expression(&expr), Some(Expr::symbol("y")));
 }

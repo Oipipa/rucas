@@ -3,6 +3,7 @@ mod analysis;
 mod collected;
 mod expr;
 mod rational;
+mod score;
 #[cfg(test)]
 mod tests;
 
@@ -97,7 +98,7 @@ pub(crate) type CollectedPolynomial = SparseUnivariatePolynomial<Expr>;
 
 pub(crate) use collected::collect_polynomial_sum;
 pub(crate) use expr::monomial_expr;
-pub(crate) use rational::UnivariateRationalFunction;
+pub(crate) use rational::collect_rational_expression;
 
 impl<C: PolynomialCoefficient> SparseUnivariatePolynomial<C> {
     pub(crate) fn from_coefficients(

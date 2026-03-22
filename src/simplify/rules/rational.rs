@@ -1,7 +1,7 @@
 use crate::{
     Expr, ExprKind,
     context::EngineContext,
-    polynomial::UnivariateRationalFunction,
+    polynomial::collect_rational_expression,
     rewrite::{RewriteEngine, RewriteRule},
 };
 
@@ -21,8 +21,7 @@ impl RewriteRule for CancelPolynomialRationalsRule {
             return None;
         }
 
-        let normalized = UnivariateRationalFunction::from_expr(expr)?.to_expr();
-        (normalized != *expr).then_some(normalized)
+        collect_rational_expression(expr)
     }
 }
 

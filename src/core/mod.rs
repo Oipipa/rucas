@@ -1,6 +1,7 @@
 pub mod canon;
 pub mod expr;
 pub mod function;
+pub(crate) mod multiplicative;
 pub mod number;
 pub mod symbol;
 pub mod visit;

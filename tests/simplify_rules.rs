@@ -141,6 +141,53 @@ fn polynomial_rational_sums_combine_distinct_denominators() {
 }
 
 #[test]
+fn symbolic_polynomial_rational_products_cancel_common_factors() {
+    let expr = Expr::product([
+        Expr::sum([
+            Expr::symbol("y"),
+            Expr::product([Expr::symbol("x"), Expr::symbol("y")]),
+        ]),
+        Expr::pow(
+            Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+            Expr::integer(-1),
+        ),
+    ]);
+
+    assert_eq!(simplify(expr), Expr::symbol("y"));
+}
+
+#[test]
+fn symbolic_polynomial_rational_sums_collect_common_denominators() {
+    let expr = Expr::sum([
+        Expr::product([
+            Expr::symbol("a"),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(-1),
+            ),
+        ]),
+        Expr::product([
+            Expr::symbol("x"),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(-1),
+            ),
+        ]),
+    ]);
+
+    assert_eq!(
+        simplify(expr),
+        Expr::product([
+            Expr::sum([Expr::symbol("a"), Expr::symbol("x")]),
+            Expr::pow(
+                Expr::sum([Expr::integer(1), Expr::symbol("x")]),
+                Expr::integer(-1),
+            ),
+        ])
+    );
+}
+
+#[test]
 fn like_terms_are_collected_with_exact_coefficients() {
     let expr = Expr::sum([
         Expr::symbol("x"),

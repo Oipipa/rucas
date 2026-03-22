@@ -4,10 +4,14 @@ use num_bigint::BigInt;
 use num_integer::Integer;
 use num_traits::{One, Signed, Zero};
 
-use crate::Number;
+use crate::{
+    Expr, Number,
+    core::multiplicative::{ExactProduct, common_product_factor},
+};
 
 use super::{
-    PolynomialAnalysisLimits, PolynomialCoefficient, SparseUnivariatePolynomial, accumulate_term,
+    CollectedPolynomial, PolynomialAnalysisLimits, PolynomialCoefficient,
+    SparseUnivariatePolynomial, UnivariatePolynomial, accumulate_term,
 };
 
 impl<C: PolynomialCoefficient> SparseUnivariatePolynomial<C> {
@@ -66,6 +70,39 @@ impl<C: PolynomialCoefficient> SparseUnivariatePolynomial<C> {
         }
 
         Some(result)
+    }
+
+    pub(crate) fn exponent_gcd(&self) -> Option<usize> {
+        let mut gcd = Option::<usize>::None;
+
+        for degree in self.coefficients.keys().copied().filter(|degree| *degree > 0) {
+            gcd = Some(match gcd {
+                Some(current) => current.gcd(&degree),
+                None => degree,
+            });
+        }
+
+        gcd.filter(|gcd| *gcd > 1)
+    }
+
+    pub(crate) fn divide_exponents(&self, divisor: usize) -> Option<Self> {
+        if divisor == 0 {
+            return None;
+        }
+
+        let coefficients = self
+            .coefficients
+            .iter()
+            .map(|(&degree, coefficient)| {
+                if degree % divisor != 0 {
+                    return None;
+                }
+
+                Some((degree / divisor, coefficient.clone()))
+            })
+            .collect::<Option<Vec<_>>>()?;
+
+        Some(Self::from_coefficients(self.variable.clone(), coefficients))
     }
 }
 
@@ -300,6 +337,81 @@ impl SparseUnivariatePolynomial<Number> {
                 .iter()
                 .map(|(&degree, coefficient)| (degree, coefficient.div(scalar))),
         ))
+    }
+}
+
+impl SparseUnivariatePolynomial<Expr> {
+    pub(crate) fn content(&self) -> Option<Expr> {
+        if self.is_zero() {
+            return None;
+        }
+
+        Some(
+            common_product_factor(
+                self.coefficients
+                    .values()
+                    .map(ExactProduct::from_expr)
+                    .collect::<Vec<_>>()
+                    .iter(),
+            )?
+            .to_expr(),
+        )
+    }
+
+    pub(crate) fn primitive_part(&self) -> Option<Self> {
+        let content = self.content()?;
+        self.div_expr_factor(&content)
+    }
+
+    pub(crate) fn div_expr_factor(&self, factor: &Expr) -> Option<Self> {
+        if factor.is_zero() {
+            return None;
+        }
+
+        let divisor = ExactProduct::from_expr(factor);
+        let coefficients = self
+            .coefficients
+            .iter()
+            .map(|(&degree, coefficient)| {
+                Some((
+                    degree,
+                    ExactProduct::from_expr(coefficient)
+                        .divide_by(&divisor)?
+                        .to_expr(),
+                ))
+            })
+            .collect::<Option<Vec<_>>>()?;
+
+        Some(Self::from_coefficients(self.variable.clone(), coefficients))
+    }
+
+    pub(crate) fn mul_expr_factor(&self, factor: &Expr) -> Self {
+        Self::from_coefficients(
+            self.variable.clone(),
+            self.coefficients.iter().map(|(&degree, coefficient)| {
+                (degree, Expr::product([coefficient.clone(), factor.clone()]))
+            }),
+        )
+    }
+
+    pub(crate) fn numeric_coefficients(&self) -> Option<UnivariatePolynomial> {
+        Some(UnivariatePolynomial::from_coefficients(
+            self.variable.clone(),
+            self.coefficients
+                .iter()
+                .map(|(&degree, coefficient)| Some((degree, coefficient.as_number()?.clone())))
+                .collect::<Option<Vec<_>>>()?,
+        ))
+    }
+
+    pub(crate) fn from_numeric_coefficients(polynomial: &UnivariatePolynomial) -> Self {
+        CollectedPolynomial::from_coefficients(
+            polynomial.variable().clone(),
+            polynomial
+                .coefficients()
+                .iter()
+                .map(|(&degree, coefficient)| (degree, Expr::number(coefficient.clone()))),
+        )
     }
 }
 
