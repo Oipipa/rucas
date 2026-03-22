@@ -259,6 +259,48 @@ fn builtin_function_rules_cover_parity_and_exponentials() {
 }
 
 #[test]
+fn symbolic_coefficients_are_collected_by_variable() {
+    let expr = Expr::sum([
+        Expr::product([Expr::symbol("a"), Expr::symbol("x")]),
+        Expr::product([Expr::symbol("b"), Expr::symbol("x")]),
+        Expr::symbol("c"),
+    ]);
+
+    assert_eq!(
+        simplify(expr),
+        Expr::sum([
+            Expr::symbol("c"),
+            Expr::product([
+                Expr::symbol("x"),
+                Expr::sum([Expr::symbol("a"), Expr::symbol("b")]),
+            ]),
+        ])
+    );
+}
+
+#[test]
+fn symbolic_builtin_coefficients_are_collected_exactly() {
+    let expr = Expr::sum([
+        Expr::product([
+            Expr::call(Function::Builtin(BuiltinFunction::Sin), [Expr::symbol("y")]),
+            Expr::symbol("x"),
+        ]),
+        Expr::symbol("x"),
+    ]);
+
+    assert_eq!(
+        simplify(expr),
+        Expr::product([
+            Expr::symbol("x"),
+            Expr::sum([
+                Expr::one(),
+                Expr::call(Function::Builtin(BuiltinFunction::Sin), [Expr::symbol("y")],),
+            ]),
+        ])
+    );
+}
+
+#[test]
 fn simplify_runs_to_fixpoint_across_rule_boundaries() {
     let expr = Expr::sum([
         Expr::product([

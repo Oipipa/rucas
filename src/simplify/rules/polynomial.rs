@@ -1,7 +1,7 @@
 use crate::{
     Expr, ExprKind,
     context::EngineContext,
-    polynomial::UnivariatePolynomial,
+    polynomial::collect_polynomial_sum,
     rewrite::{RewriteEngine, RewriteRule},
 };
 
@@ -21,7 +21,6 @@ impl RewriteRule for CollectPolynomialSumRule {
             return None;
         };
 
-        let normalized = UnivariatePolynomial::from_expr(expr)?.to_expr();
-        (normalized != *expr).then_some(normalized)
+        collect_polynomial_sum(expr)
     }
 }

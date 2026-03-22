@@ -1,26 +1,33 @@
 use crate::{Expr, Number, Symbol};
 
-use super::UnivariatePolynomial;
+use super::{PolynomialCoefficient, SparseUnivariatePolynomial};
 
-impl UnivariatePolynomial {
+impl SparseUnivariatePolynomial<Number> {
     pub(crate) fn to_expr(&self) -> Expr {
-        Expr::sum(
-            self.coefficients
-                .iter()
-                .map(|(degree, coefficient)| monomial_expr(&self.variable, *degree, coefficient)),
-        )
+        polynomial_expr(self, |coefficient| Expr::number(coefficient.clone()))
+    }
+}
+
+impl SparseUnivariatePolynomial<Expr> {
+    pub(crate) fn to_expr(&self) -> Expr {
+        polynomial_expr(self, Clone::clone)
     }
 }
 
 pub(crate) fn monomial_expr(variable: &Symbol, degree: usize, coefficient: &Number) -> Expr {
+    monomial_expr_with_coefficient(variable, degree, Expr::number(coefficient.clone()))
+}
+
+pub(super) fn monomial_expr_with_coefficient(
+    variable: &Symbol,
+    degree: usize,
+    coefficient: Expr,
+) -> Expr {
     match degree {
-        0 => Expr::number(coefficient.clone()),
+        0 => coefficient,
         1 => match coefficient {
             value if value.is_one() => Expr::from_symbol(variable.clone()),
-            _ => Expr::product([
-                Expr::number(coefficient.clone()),
-                Expr::from_symbol(variable.clone()),
-            ]),
+            _ => Expr::product([coefficient, Expr::from_symbol(variable.clone())]),
         },
         _ => {
             let power = Expr::pow(
@@ -31,8 +38,29 @@ pub(crate) fn monomial_expr(variable: &Symbol, degree: usize, coefficient: &Numb
             if coefficient.is_one() {
                 power
             } else {
-                Expr::product([Expr::number(coefficient.clone()), power])
+                Expr::product([coefficient, power])
             }
         }
     }
+}
+
+fn polynomial_expr<C>(
+    polynomial: &SparseUnivariatePolynomial<C>,
+    coefficient_expr: impl Fn(&C) -> Expr,
+) -> Expr
+where
+    C: PolynomialCoefficient,
+{
+    Expr::sum(
+        polynomial
+            .coefficients()
+            .iter()
+            .map(|(degree, coefficient)| {
+                monomial_expr_with_coefficient(
+                    polynomial.variable(),
+                    *degree,
+                    coefficient_expr(coefficient),
+                )
+            }),
+    )
 }

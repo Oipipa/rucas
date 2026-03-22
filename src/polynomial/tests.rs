@@ -2,8 +2,10 @@ use std::collections::BTreeMap;
 
 use num_bigint::BigInt;
 
-use super::{PolynomialAnalysisLimits, UnivariatePolynomial, UnivariateRationalFunction};
-use crate::{Expr, Number, Symbol};
+use super::{
+    CollectedPolynomial, PolynomialAnalysisLimits, UnivariatePolynomial, UnivariateRationalFunction,
+};
+use crate::{BuiltinFunction, Expr, Function, Number, Symbol};
 
 #[test]
 fn recursive_analysis_collects_nested_polynomials() {
@@ -42,6 +44,64 @@ fn recursive_analysis_respects_term_limits() {
     );
 
     assert!(polynomial.is_none());
+}
+
+#[test]
+fn collected_analysis_supports_symbolic_coefficients() {
+    let x = Symbol::new("x");
+    let expr = Expr::sum([
+        Expr::product([Expr::symbol("a"), Expr::symbol("x")]),
+        Expr::product([Expr::symbol("b"), Expr::symbol("x")]),
+        Expr::symbol("c"),
+    ]);
+
+    let polynomial = CollectedPolynomial::from_expr_with_variable_and_limits(
+        &expr,
+        &x,
+        PolynomialAnalysisLimits::default(),
+    )
+    .expect("symbolic coefficients independent of x should collect");
+
+    assert_eq!(
+        polynomial.to_expr(),
+        Expr::sum([
+            Expr::symbol("c"),
+            Expr::product([
+                Expr::symbol("x"),
+                Expr::sum([Expr::symbol("a"), Expr::symbol("b")]),
+            ]),
+        ])
+    );
+}
+
+#[test]
+fn collected_analysis_treats_variable_independent_calls_as_coefficients() {
+    let x = Symbol::new("x");
+    let expr = Expr::sum([
+        Expr::product([
+            Expr::call(Function::Builtin(BuiltinFunction::Sin), [Expr::symbol("y")]),
+            Expr::symbol("x"),
+        ]),
+        Expr::symbol("x"),
+    ]);
+
+    let polynomial = CollectedPolynomial::from_expr_with_variable_and_limits(
+        &expr,
+        &x,
+        PolynomialAnalysisLimits::default(),
+    )
+    .expect("calls independent of x should remain exact coefficients");
+
+    assert_eq!(
+        polynomial.to_expr(),
+        Expr::product([
+            Expr::symbol("x"),
+            Expr::sum([
+                Expr::one(),
+                Expr::call(Function::Builtin(BuiltinFunction::Sin), [Expr::symbol("y")],),
+            ]),
+        ])
+    );
 }
 
 #[test]

@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use crate::{Expr, ExprKind, Number, Symbol};
 
-use super::{PolynomialAnalysisLimits, UnivariatePolynomial};
+use super::{PolynomialAnalysisLimits, SparseUnivariatePolynomial, UnivariatePolynomial};
 
-impl UnivariatePolynomial {
+impl SparseUnivariatePolynomial<Number> {
     pub(crate) fn from_expr(expr: &Expr) -> Option<Self> {
         Self::from_expr_with_limits(expr, PolynomialAnalysisLimits::default())
     }
@@ -68,14 +68,17 @@ fn analyze(
 }
 
 pub(super) fn infer_variable(expr: &Expr) -> Option<Symbol> {
+    let symbols = symbols(expr);
+
+    (symbols.len() == 1)
+        .then(|| symbols.into_iter().next())
+        .flatten()
+}
+
+pub(super) fn symbols(expr: &Expr) -> BTreeSet<Symbol> {
     let mut symbols = BTreeSet::new();
     collect_symbols(expr, &mut symbols);
-
-    if symbols.len() == 1 {
-        symbols.into_iter().next()
-    } else {
-        None
-    }
+    symbols
 }
 
 fn collect_symbols(expr: &Expr, symbols: &mut BTreeSet<Symbol>) {

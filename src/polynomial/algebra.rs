@@ -6,9 +6,70 @@ use num_traits::{One, Signed, Zero};
 
 use crate::Number;
 
-use super::{PolynomialAnalysisLimits, UnivariatePolynomial, accumulate_term};
+use super::{
+    PolynomialAnalysisLimits, PolynomialCoefficient, SparseUnivariatePolynomial, accumulate_term,
+};
 
-impl UnivariatePolynomial {
+impl<C: PolynomialCoefficient> SparseUnivariatePolynomial<C> {
+    pub(super) fn add(&self, other: &Self, limits: PolynomialAnalysisLimits) -> Option<Self> {
+        if self.variable != other.variable {
+            return None;
+        }
+
+        let mut coefficients = self.coefficients.clone();
+        for (degree, coefficient) in &other.coefficients {
+            accumulate_term(&mut coefficients, *degree, coefficient.clone());
+        }
+
+        within_term_limit(&coefficients, limits).then(|| Self {
+            variable: self.variable.clone(),
+            coefficients,
+        })
+    }
+
+    pub(super) fn mul(&self, other: &Self, limits: PolynomialAnalysisLimits) -> Option<Self> {
+        if self.variable != other.variable {
+            return None;
+        }
+
+        let mut coefficients = BTreeMap::new();
+        for (left_degree, left_coeff) in &self.coefficients {
+            for (right_degree, right_coeff) in &other.coefficients {
+                accumulate_term(
+                    &mut coefficients,
+                    left_degree + right_degree,
+                    left_coeff.mul(right_coeff),
+                );
+            }
+        }
+
+        within_term_limit(&coefficients, limits).then(|| Self {
+            variable: self.variable.clone(),
+            coefficients,
+        })
+    }
+
+    pub(super) fn pow(&self, exponent: usize, limits: PolynomialAnalysisLimits) -> Option<Self> {
+        let mut power = exponent;
+        let mut base = self.clone();
+        let mut result = Self::constant(&self.variable, C::one());
+
+        while power > 0 {
+            if power % 2 == 1 {
+                result = result.mul(&base, limits)?;
+            }
+
+            power /= 2;
+            if power > 0 {
+                base = base.mul(&base, limits)?;
+            }
+        }
+
+        Some(result)
+    }
+}
+
+impl SparseUnivariatePolynomial<Number> {
     pub(crate) fn content(&self) -> Option<Number> {
         if self.is_zero() {
             return None;
@@ -228,63 +289,6 @@ impl UnivariatePolynomial {
         Some(factors)
     }
 
-    pub(super) fn add(&self, other: &Self, limits: PolynomialAnalysisLimits) -> Option<Self> {
-        if self.variable != other.variable {
-            return None;
-        }
-
-        let mut coefficients = self.coefficients.clone();
-        for (degree, coefficient) in &other.coefficients {
-            accumulate_term(&mut coefficients, *degree, coefficient.clone());
-        }
-
-        within_term_limit(&coefficients, limits).then(|| Self {
-            variable: self.variable.clone(),
-            coefficients,
-        })
-    }
-
-    pub(super) fn mul(&self, other: &Self, limits: PolynomialAnalysisLimits) -> Option<Self> {
-        if self.variable != other.variable {
-            return None;
-        }
-
-        let mut coefficients = BTreeMap::new();
-        for (left_degree, left_coeff) in &self.coefficients {
-            for (right_degree, right_coeff) in &other.coefficients {
-                accumulate_term(
-                    &mut coefficients,
-                    left_degree + right_degree,
-                    left_coeff.mul(right_coeff),
-                );
-            }
-        }
-
-        within_term_limit(&coefficients, limits).then(|| Self {
-            variable: self.variable.clone(),
-            coefficients,
-        })
-    }
-
-    pub(super) fn pow(&self, exponent: usize, limits: PolynomialAnalysisLimits) -> Option<Self> {
-        let mut power = exponent;
-        let mut base = self.clone();
-        let mut result = Self::constant(&self.variable, Number::one());
-
-        while power > 0 {
-            if power % 2 == 1 {
-                result = result.mul(&base, limits)?;
-            }
-
-            power /= 2;
-            if power > 0 {
-                base = base.mul(&base, limits)?;
-            }
-        }
-
-        Some(result)
-    }
-
     pub(crate) fn div_scalar(&self, scalar: &Number) -> Option<Self> {
         if scalar.is_zero() {
             return None;
@@ -300,7 +304,7 @@ impl UnivariatePolynomial {
 }
 
 fn within_term_limit(
-    coefficients: &BTreeMap<usize, Number>,
+    coefficients: &BTreeMap<usize, impl PolynomialCoefficient>,
     limits: PolynomialAnalysisLimits,
 ) -> bool {
     coefficients.len() <= limits.max_terms
